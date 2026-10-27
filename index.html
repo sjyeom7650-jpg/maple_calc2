@@ -1,0 +1,210 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="color-scheme" content="dark" />
+  <title>스타포스 가성비 계산기</title>
+  <meta name="description" content="메이플스토리 장비별 스타포스 강화 시 최종데미지 1%당 메소 효율을 계산해 순위를 매겨 드립니다." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@400;500;700&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/css/style.css" />
+</head>
+<body>
+  <div class="wrap">
+    <!-- 공지·홍보 영역: 내용은 /js/notices.js 에서 수정 -->
+    <div id="notice-bar" class="notice-bar" hidden>
+      <span class="notice-badge">NOTICE</span>
+      <div class="notice-viewport" aria-live="polite"><a id="notice-text" class="notice-text"></a></div>
+      <div class="notice-nav">
+        <button type="button" id="notice-prev" aria-label="이전 공지">‹</button>
+        <span id="notice-count" class="notice-count"></span>
+        <button type="button" id="notice-next" aria-label="다음 공지">›</button>
+      </div>
+    </div>
+    <a id="promo-banner" class="promo-banner" hidden></a>
+
+    <header class="masthead">
+      <p class="eyebrow">MapleStory · Star Force</p>
+      <h1>스펙업 가성비 계산기</h1>
+      <p class="lede">장비마다 다음 스타포스 1단계에 드는 메소를 <b>최종데미지 1%당 가격</b>으로 환산해, 가장 싼 강화부터 줄 세웁니다.</p>
+    </header>
+
+    <nav class="main-tabs" role="tablist" aria-label="기능">
+      <button type="button" role="tab" id="tab-rank" aria-controls="view-rank" aria-selected="true">가성비 순위</button>
+      <button type="button" role="tab" id="tab-calc" aria-controls="view-calc" aria-selected="false">스타포스 기댓값 계산기</button>
+    </nav>
+
+    <details class="settings" id="settings">
+      <summary>
+        <span class="settings-title">할인·이벤트 설정</span>
+        <span id="settings-summary" class="settings-summary"></span>
+      </summary>
+      <div class="settings-body">
+        <div class="setting-row">
+          <span class="setting-label">MVP</span>
+          <div class="chips" id="mvp-chips">
+            <label><input type="radio" name="mvp" value="none" checked /><span>없음</span></label>
+            <label><input type="radio" name="mvp" value="silver" /><span>실버 3%</span></label>
+            <label><input type="radio" name="mvp" value="gold" /><span>골드 5%</span></label>
+            <label><input type="radio" name="mvp" value="diamond" /><span>다이아·레드 10%</span></label>
+          </div>
+        </div>
+        <div class="setting-row">
+          <span class="setting-label">기본</span>
+          <div class="chips">
+            <label><input type="checkbox" data-setting="pcRoom" /><span>PC방 5%</span></label>
+            <label><input type="checkbox" data-setting="starCatch" checked /><span>스타캐치</span></label>
+          </div>
+        </div>
+        <div class="setting-row">
+          <span class="setting-label">이벤트</span>
+          <div class="chips">
+            <label><input type="checkbox" data-setting="shining" /><span>샤이닝 스타포스</span></label>
+            <label><input type="checkbox" data-setting="discount30" /><span>비용 30% 할인</span></label>
+            <label><input type="checkbox" data-setting="destroyDown" /><span>파괴 30% 감소</span></label>
+            <label><input type="checkbox" data-setting="sure51015" /><span>5·10·15성 100%</span></label>
+            <label><input type="checkbox" data-setting="plusOne" /><span>1+1 (10성 이하)</span></label>
+          </div>
+        </div>
+        <p class="settings-note">MVP·PC방 할인은 17성 미만에만 적용됩니다. 샤이닝 스타포스는 비용 30% 할인, 21성 이하 파괴 30% 감소, 복구 비용 20% 할인을 함께 적용합니다. 파괴 시 확정 복구·12성 복구·22성 복구·파괴방지 중 가장 싼 방법을 단계마다 자동으로 고릅니다.</p>
+      </div>
+    </details>
+
+    <div id="view-rank" role="tabpanel" aria-labelledby="tab-rank">
+
+    <form id="search-form" class="search" autocomplete="off">
+      <label for="nickname" class="sr-only">캐릭터 닉네임</label>
+      <input id="nickname" name="nickname" type="text" maxlength="12" placeholder="캐릭터 닉네임" required />
+      <button id="search-btn" type="submit">
+        <span class="btn-label">검색</span>
+      </button>
+    </form>
+
+    <section class="controls">
+      <p class="controls-help">
+        장비마다 <b>직접 강화(직작) 기댓값</b>과 입력한 <b>경매장 매물 가격</b>을 함께 비교해 가장 싼 방법을 고릅니다.
+        장비 행의 <b>가격 입력</b>을 눌러 스페어·매물 가격을 넣어 보세요.
+        <a href="https://pinkbean.gg/item-prices" target="_blank" rel="noopener">시세 참고 ↗</a>
+      </p>
+      <label class="toggle">
+        <input type="checkbox" id="hide-invalid" checked />
+        <span>계산 불가 장비 숨기기 <em id="hidden-count"></em></span>
+      </label>
+    </section>
+
+    <section id="status" class="status" hidden></section>
+
+    <section id="character" class="character" hidden></section>
+
+    <section id="result" class="result" hidden>
+      <div class="preset-bar">
+        <span class="preset-label">장비 프리셋</span>
+        <div class="preset-tabs" role="tablist" aria-label="장비 프리셋">
+          <button type="button" role="tab" data-preset="1">1번</button>
+          <button type="button" role="tab" data-preset="2">2번</button>
+          <button type="button" role="tab" data-preset="3">3번</button>
+        </div>
+      </div>
+
+      <section class="budget" aria-labelledby="budget-title">
+        <div class="budget-head">
+          <h2 id="budget-title">예산으로 스펙업</h2>
+          <div class="budget-input">
+            <label for="budget">예산</label>
+            <input id="budget" type="text" inputmode="text" placeholder="예: 50억" autocomplete="off" />
+            <span id="budget-hint" class="budget-hint"></span>
+          </div>
+        </div>
+        <div id="plan" class="plan"></div>
+
+        <div class="combo-head">
+          <h3>경우의 수</h3>
+          <p id="combo-caption" class="combo-caption"></p>
+        </div>
+        <div class="table-scroll">
+          <table class="combo-table">
+            <thead>
+              <tr>
+                <th class="k-gain">최종뎀 합계</th>
+                <th class="k-cost">총 비용</th>
+                <th class="k-eff">1%당 평균</th>
+                <th class="k-picks">강화 구성</th>
+              </tr>
+            </thead>
+            <tbody id="combo-body"></tbody>
+          </table>
+        </div>
+        <button type="button" id="combo-more" class="more-btn" hidden></button>
+      </section>
+
+      <h2 class="section-title">장비별 가장 효율 좋은 방법</h2>
+      <div class="table-scroll">
+        <table class="rank-table" id="rank-table">
+          <thead>
+            <tr>
+              <th class="c-rank">순위</th>
+              <th class="c-item">장비</th>
+              <th class="c-lv">렙제</th>
+              <th class="c-best">가장 싼 방법</th>
+              <th class="c-gain">최종뎀</th>
+              <th class="c-cost">비용</th>
+              <th class="c-eff">1%당 가격</th>
+            </tr>
+          </thead>
+        </table>
+      </div>
+      <p class="footnote">
+        최종뎀 데이터가 있는 17·18·19·21성 사이에서만 비교합니다. 놀장·17성 미만 장비와 140제 미만 장비는 제외됩니다.
+        렙제 데이터가 없는 장비는 바로 아래 렙제 구간(예: 155제 → 150제) 값으로 계산합니다.
+        예산 계산은 장비마다 직작, 매물 구매, 매물 구매 후 직작을 모두 후보로 놓고 그중 하나씩 골라 조합합니다.
+        직작은 평균값(기댓값)이라 실제로는 더 들거나 덜 들 수 있고, 매물 구매는 가격이 확정입니다.
+      </p>
+    </section>
+
+    </div><!-- /view-rank -->
+
+    <div id="view-calc" role="tabpanel" aria-labelledby="tab-calc" hidden>
+      <section class="calc-card">
+        <h2 class="calc-title">스타포스 기댓값 계산기</h2>
+        <div class="calc-form">
+          <div class="field">
+            <label for="calc-level">장비 레벨</label>
+            <input id="calc-level" type="number" inputmode="numeric" min="1" max="300" value="200" />
+            <div class="chips small" id="calc-level-chips">
+              <button type="button" data-level="140">140</button>
+              <button type="button" data-level="150">150</button>
+              <button type="button" data-level="160">160</button>
+              <button type="button" data-level="200">200</button>
+              <button type="button" data-level="250">250</button>
+            </div>
+          </div>
+          <div class="field star-field">
+            <label for="calc-from">스타포스</label>
+            <div class="star-range">
+              <input id="calc-from" type="number" inputmode="numeric" min="0" max="29" value="17" aria-label="현재 스타포스" />
+              <span>→</span>
+              <input id="calc-to" type="number" inputmode="numeric" min="1" max="30" value="22" aria-label="목표 스타포스" />
+            </div>
+          </div>
+          <div class="field">
+            <label for="calc-spare">스페어(같은 장비 1개) 가격</label>
+            <input id="calc-spare" type="text" inputmode="text" placeholder="0 (예: 10억)" autocomplete="off" />
+            <span id="calc-spare-hint" class="field-hint"></span>
+          </div>
+        </div>
+        <div id="calc-loaded" class="calc-loaded" hidden></div>
+        <div id="calc-result"></div>
+      </section>
+    </div><!-- /view-calc -->
+
+    <footer class="site-footer">
+      Data based on NEXON Open API · 본 사이트는 넥슨과 무관한 팬 제작 도구입니다.
+    </footer>
+  </div>
+
+  <script type="module" src="/js/notice.js"></script>
+  <script type="module" src="/js/app.js"></script>
+</body>
+</html>
