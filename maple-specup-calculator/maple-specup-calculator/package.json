@@ -1,0 +1,13 @@
+{
+  "name": "maple-specup-calculator",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "메이플스토리 스타포스 스펙업 가성비 계산기",
+  "scripts": {
+    "dev": "vercel dev"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}
